@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comment Section</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="comment-section">
+        <div id="comment-container" class="container"></div>
+        <div class="container-actions">
+            <button id="add-new-comment">ADD COMMENT</button>
+            <input id="add-new-comment-text" type="text" />
+        </div>
+    </div>
+    <button onclick="gl_reset()">RESET</button>
+    <script>
+
+        let add_comment = document.getElementById("add-new-comment");
+        let add_comment_txt = document.getElementById("add-new-comment-text");
+        let comment_holder = document.getElementById("comment-container");
+
+        function getGlId() {
+            let gl_id = parseInt(localStorage.getItem("gl_counter"));
+            if (isNaN(gl_id)) gl_id = -1;
+            localStorage.setItem("gl_counter", gl_id + 1);
+            return gl_id + 1;
+        }
+
+        let find_and_delete_flg = false;
+
+        let find_and_delete_helper = (obj, id) => {
+            if(find_and_delete_flg == true) return;
+            for(let i=0; i< obj.length; i++) {
+                if(obj[i].id == id) {
+                    obj.splice(i, 1);
+                    gl_save();
+                    onLoad();
+                    find_and_delete_flg = true;
+                }
+                else {
+                    find_and_delete_helper(obj[i].reply, id);
+                }
+            }
+        }
+
+        let find_and_delete = (id) => {
+            find_and_delete_flg = false;
+            for(let i=0; i < gl_comment.length; i++) {
+                if(gl_comment[i].id == id) {
+                    gl_comment.splice(i, 1);
+                    gl_save();
+                    onLoad();
+                    return;
+                }
+                else {
+                    find_and_delete_helper(gl_comment[i].reply, id);
+                }
+            }
+        }
+
+        let gl_comment = JSON.parse(localStorage.getItem("cache"));
+        if (gl_comment == null) gl_comment = [];
+
+        let reply_handler = (parent, parent_obj) => {
+            let reply = document.createElement("div");
+            reply.className = "reply-section";
+            reply.innerText = prompt("add reply");
+            if(reply.innerText == "") return;
+            reply.id = getGlId();
+            let reply_rplobj = {
+                id: reply.id,
+                text: reply.innerText,
+                reply: []
+            }
+            parent_obj.reply.push(reply_rplobj);
+            let reply_action = document.createElement("div");
+            reply_action.className = "comment-action";
+            let reply_rplbtn = document.createElement("button");
+            reply_rplbtn.innerText = "REPLY";
+            reply_rplbtn.addEventListener("click", (e) => {
+                reply_handler(reply, reply_rplobj);
+            });
+            let reply_delbtn = document.createElement("button");
+            reply_delbtn.innerText = "DELETE";
+            reply_delbtn.addEventListener("click", (e) =>{find_and_delete(reply.id)});
+            reply_action.appendChild(reply_rplbtn);
+            reply_action.appendChild(reply_delbtn);
+            reply.appendChild(reply_action);
+            parent.appendChild(reply);
+            gl_save();
+        };
+
+        add_comment.addEventListener("click", (e) => {
+            let node = document.createElement("div");
+            node.className = "comment";
+            node.innerText = add_comment_txt.value;
+            if(node.innerText == "") return;
+            node.id = getGlId();
+            let curr_obj = {
+                id: node.id,
+                text: add_comment_txt.value,
+                reply: []
+            };
+            gl_comment.push(curr_obj);
+            let node_action = document.createElement("div");
+            node_action.className = "comment-action";
+            let rplbtn = document.createElement("button");
+            rplbtn.innerText = "REPLY";
+            rplbtn.addEventListener("click", (e) => {
+                reply_handler(node, curr_obj);
+            });
+            let delbtn = document.createElement("button");
+            delbtn.innerText = "DELETE";
+            delbtn.addEventListener("click", (e) =>{find_and_delete(node.id)});
+            node_action.appendChild(rplbtn);
+            node_action.appendChild(delbtn);
+            node.appendChild(node_action);
+            comment_holder.appendChild(node);
+            gl_save();
+        });
+
+        let loadReply = (obj, parent) => {
+            for (let i = 0; i < obj.reply.length; i++) {
+                let reply = document.createElement("div");
+                reply.className = "reply-section";
+                reply.innerText = obj.reply[i].text;
+                reply.id = obj.reply[i].id;
+                let reply_action = document.createElement("div");
+                reply_action.className = "comment-action";
+                let reply_rplbtn = document.createElement("button");
+                reply_rplbtn.innerText = "REPLY";
+                reply_rplbtn.addEventListener("click", (e) => {
+                    reply_handler(reply, obj.reply[i]);
+                });
+                let reply_delbtn = document.createElement("button");
+                reply_delbtn.innerText = "DELETE";
+                reply_delbtn.addEventListener("click", (e) =>{find_and_delete(reply.id)});
+                reply_action.appendChild(reply_rplbtn);
+                reply_action.appendChild(reply_delbtn);
+                reply.appendChild(reply_action);
+                parent.appendChild(reply);
+                loadReply(obj.reply[i], reply);
+            }
+        }
+
+        let onLoad = () => {
+            comment_holder.innerHTML = "";
+            for (let i = 0; i < gl_comment.length; i++) {
+                let node = document.createElement("div");
+                node.className = "comment";
+                node.innerText = gl_comment[i].text;
+                node.id = gl_comment[i].id;
+                let node_action = document.createElement("div");
+                node_action.className = "comment-action";
+                let rplbtn = document.createElement("button");
+                rplbtn.innerText = "REPLY";
+                rplbtn.addEventListener("click", (e) => {
+                    reply_handler(node, gl_comment[i]);
+                });
+                let delbtn = document.createElement("button");
+                delbtn.innerText = "DELETE";
+                delbtn.addEventListener("click", (e) =>{find_and_delete(node.id)});
+                node_action.appendChild(rplbtn);
+                node_action.appendChild(delbtn);
+                node.appendChild(node_action);
+                comment_holder.appendChild(node);
+                loadReply(gl_comment[i], node);
+            }
+        }
+        
+
+        let gl_reset = () => {
+            localStorage.removeItem("cache");
+            localStorage.removeItem("gl_counter");
+            gl_comment = [];
+            window.location.reload();
+        };
+
+        let gl_save = () => {
+            localStorage.setItem("cache", JSON.stringify(gl_comment));
+        }
+        
+        onLoad();
+    </script>
+</body>
+</html>
